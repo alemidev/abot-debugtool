@@ -23,7 +23,7 @@ from pyrogram import filters
 from pyrogram.types import MessageEntity
 
 from util.command import filterCommand
-from util.parse import cleartermcolor
+from util.text import cleartermcolor
 from util.message import tokenize_json, tokenize_lines, is_me, edit_or_reply
 from util.serialization import convert_to_dict
 from util.permission import is_superuser
