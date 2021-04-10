@@ -205,6 +205,7 @@ async def exec_cmd(client, message):
 @report_error(logger)
 @set_offline
 async def botfather_list_command(client, message):
+	out = ""
 	for k in CATEGORIES:
 		for kk in CATEGORIES[k].HELP_ENTRIES:
 			e = CATEGORIES[k].HELP_ENTRIES[kk]
