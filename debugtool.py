@@ -28,7 +28,7 @@ from util.message import is_me, edit_or_reply
 from util.serialization import convert_to_dict
 from util.permission import is_superuser
 from util.decorators import report_error, set_offline
-from util.help import HelpCategory
+from util.help import HelpCategory, CATEGORIES
 
 logger = logging.getLogger(__name__)
 
@@ -199,3 +199,14 @@ async def exec_cmd(client, message):
 	except Exception as e:
 		logger.exception("Error in .exec command")
 		await msg.edit(f"`>>> {args}`\n`[!] → ` " + str(e), parse_mode='markdown')
+
+
+@alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes)))
+@report_error(logger)
+@set_offline
+async def botfather_list_command(client, message):
+	for k in CATEGORIES:
+		for kk in CATEGORIES[k].HELP_ENTRIES:
+			e = CATEGORIES[k].HELP_ENTRIES[kk]
+			out += f"{e.title} - {e.args} | {e.shorttext}\n"
+	await message.reply(out, parse_mode='markdown')
