@@ -26,7 +26,7 @@ from util.command import filterCommand
 from util.text import cleartermcolor, tokenize_json, tokenize_lines
 from util.message import is_me, edit_or_reply
 from util.serialization import convert_to_dict
-from util.permission import is_superuser
+from util.permission import is_superuser, is_allowed
 from util.decorators import report_error, set_offline
 from util.help import HelpCategory, CATEGORIES
 
@@ -199,6 +199,93 @@ async def exec_cmd(client, message):
 	except Exception as e:
 		logger.exception("Error in .exec command")
 		await msg.edit(f"`>>> {args}`\n`[!] → ` " + str(e), parse_mode='markdown')
+
+HELP.add_help("where", "get info about chat",
+				"Get complete information about a chat and send it as json. If no chat name " +
+				"or id is specified, current chat will be used. Add `-no` at the end if you just want the " +
+				"id : no file will be attached.", args="[<target>] [-no]", public=True)
+@alemiBot.on_message(is_allowed & filterCommand("where", list(alemiBot.prefixes), flags=["-no"]))
+async def where_cmd(client, message):
+	try:
+		tgt = message.chat
+		if "cmd" in message.command:
+			arg = message.command["cmd"][0]
+			if arg.isnumeric():
+				tgt = await client.get_chat(int(arg))
+			else:
+				tgt = await client.get_chat(arg)
+		logger.info(f"Getting info of chat")
+		await edit_or_reply(message, f"` → ` Getting data of chat `{tgt.id}`")
+		if not "-no" in message.command["flags"]:
+			out = io.BytesIO((str(tgt)).encode('utf-8'))
+			out.name = f"chat-{message.chat.id}.json"
+			await client.send_document(message.chat.id, out)
+	except Exception as e:
+		logger.exception("Error in .where command")
+		await edit_or_reply(message,"`[!] → ` " + str(e))
+	await client.set_offline()
+
+HELP.add_help("who", "get info about user",
+				"Get complete information about user and attach as json. If replying to a message, author will be used. " +
+				"An id or @ can be specified. If neither is applicable, self will be used. Append `-no` if you just want the id.",
+				public=True, args="[<target>] [-no]")
+@alemiBot.on_message(is_allowed & filterCommand("who", list(alemiBot.prefixes), flags=["-no"]))
+async def who_cmd(client, message):
+	try:
+		peer = None
+		if "cmd" in message.command:
+			arg = message.command["cmd"][0]
+			if arg.isnumeric():
+				peer = await client.get_users(int(arg))
+			else:
+				peer = await client.get_users(arg)
+		elif message.reply_to_message is not None \
+		and message.reply_to_message.from_user is not None:
+			peer = message.reply_to_message.from_user
+		else:
+			peer = await client.get_me()
+		logger.info("Getting info of user")
+		await edit_or_reply(message, f"` → ` Getting data of user `{peer.id}`")
+		if not "-no" in message.command["flags"]:
+			out = io.BytesIO((str(peer)).encode('utf-8'))
+			out.name = f"user-{peer.id}.json"
+			await client.send_document(message.chat.id, out)
+	except Exception as e:
+		logger.exception("Error in .who command")
+		await edit_or_reply(message, "`[!] → ` " + str(e))
+	await client.set_offline()
+
+HELP.add_help("what", "get info about message",
+				"Get complete information about a message and attach as json. If replying, replied message will be used. "+
+				"id and chat can be passed as arguments. If no chat is specified with `-g`, " +
+				"message will be searched in current chat. Append `-no` if you just want the id.",
+				args="[<target>] [-g <chatId>] [-no]", public=True)
+@alemiBot.on_message(is_allowed & filterCommand("what", list(alemiBot.prefixes), options={
+	"group" : ["-g", "-group"]
+}, flags=["-no"]))
+async def what_cmd(client, message):
+	msg = message
+	try:
+		if message.reply_to_message is not None:
+			msg = await client.get_messages(message.chat.id, message.reply_to_message.message_id)
+		elif "cmd" in message.command and message.command["cmd"][0].isnumeric():
+			chat_id = message.chat.id
+			if "group" in message.command:
+				if message.command["group"].isnumeric():
+					chat_id = int(message.command["group"])
+				else:
+					chat_id = (await client.get_chat(message.command["group"])).id
+			msg = await client.get_messages(chat_id, int(message.command["cmd"][0]))
+		logger.info("Getting info of msg")
+		await edit_or_reply(message, f"` → ` Getting data of msg `{msg.message_id}`")
+		if not "-no" in message.command["flags"]:
+			out = io.BytesIO((str(msg)).encode('utf-8'))
+			out.name = f"msg-{msg.message_id}.json"
+			await client.send_document(message.chat.id, out)
+	except Exception as e:
+		logger.exception("Error in .what command")
+		await edit_or_reply(message,"`[!] → ` " + str(e))
+	await client.set_offline()
 
 
 @alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes)))
