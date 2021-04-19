@@ -218,7 +218,7 @@ async def where_cmd(client, message):
 		await edit_or_reply(message, f"` → ` Getting data of chat `{tgt.id}`")
 		if not "-no" in message.command["flags"]:
 			out = io.BytesIO((str(tgt)).encode('utf-8'))
-			out.name = f"chat-{message.chat.id}.json"
+			out.name = f"chat-{tgt.id}.json"
 			await client.send_document(message.chat.id, out)
 	except Exception as e:
 		logger.exception("Error in .where command")
