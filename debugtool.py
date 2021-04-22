@@ -4,17 +4,7 @@ import re
 import logging
 import sys
 import inspect
-
-# handy libs to have for eval()
-import datetime
 import time
-import requests
-import sympy
-import os
-import re
-import random
-import math
-import cmath
 import json
 
 from bot import alemiBot
