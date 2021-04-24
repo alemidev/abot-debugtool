@@ -277,6 +277,24 @@ async def what_cmd(client, message):
 		await edit_or_reply(message,"`[!] → ` " + str(e))
 	await client.set_offline()
 
+HELP.add_help(["joined", "jd"], "count active chats",
+				"get number of all dialogs : groups, supergroups, channels, dms, bots")
+@alemiBot.on_message(is_superuser & filterCommand(["joined", "jd"], list(alemiBot.prefixes)))
+@report_error(logger)
+@set_offline
+async def joined_cmd(client, message):
+	logger.info("Listing active dialogs")
+	msg = await edit_or_reply(message, "` → ` Counting...")
+	res = {}
+	async for dialog in client.iter_dialogs():
+		if dialog.chat.type in res:
+			res[dialog.chat.type] += 1
+		else:
+			res[dialog.chat.type] = 1
+	out = "`→ ` --Active chats-- \n"
+	for k in res:
+		out += f"` → {k} ` {res[k]}\n"
+	await msg.edit(out)
 
 @alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes)))
 @report_error(logger)
