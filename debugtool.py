@@ -14,6 +14,7 @@ from pyrogram.types import MessageEntity
 
 from util.command import filterCommand
 from util.text import cleartermcolor, tokenize_json, tokenize_lines
+from util.getters import get_user
 from util.message import is_me, edit_or_reply
 from util.serialization import convert_to_dict
 from util.permission import is_superuser, is_allowed
@@ -222,18 +223,12 @@ HELP.add_help("who", "get info about user",
 @alemiBot.on_message(is_allowed & filterCommand("who", list(alemiBot.prefixes), flags=["-no"]))
 async def who_cmd(client, message):
 	try:
-		peer = None
+		peer = get_user(message)
 		if "cmd" in message.command:
 			arg = message.command["cmd"][0]
-			if arg.isnumeric():
-				peer = await client.get_users(int(arg))
-			else:
-				peer = await client.get_users(arg)
-		elif message.reply_to_message is not None \
-		and message.reply_to_message.from_user is not None:
-			peer = message.reply_to_message.from_user
-		else:
-			peer = await client.get_me()
+			peer = await client.get_users(int(arg) if arg.isnumeric() else arg)
+		elif message.reply_to_message is not None:
+			peer = get_user(message.reply_to_message)
 		logger.info("Getting info of user")
 		await edit_or_reply(message, f"` → ` Getting data of user `{peer.id}`")
 		if not "-no" in message.command["flags"]:
