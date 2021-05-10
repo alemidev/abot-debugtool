@@ -69,7 +69,7 @@ async def get_cmd(client, message):
 	The path can be absolute or relative (starting from alemiBot workdir).
 	Use flag `-log` to automatically upload `data/debug.log`.
 	"""
-	if len(message.command.arg) < 1:
+	if len(message.command.arg) < 1 and "-log" not in message.command.flags:
 		return await edit_or_reply(message, "`[!] → ` No input")
 	await client.send_chat_action(message.chat.id, "upload_document")
 	name = message.command.arg[0]
