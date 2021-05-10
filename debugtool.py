@@ -11,9 +11,9 @@ from pyrogram.types import MessageEntity
 from util.command import filterCommand
 from util.text import cleartermcolor
 from util.getters import get_user
-from util.message import is_me, edit_or_reply
+from util.message import ProgressChatAction, is_me, edit_or_reply
 from util.permission import is_superuser, is_allowed
-from util.decorators import report_error, set_offline
+from util.decorators import report_error, set_offline, cancel_chat_action
 from util.help import HelpCategory, CATEGORIES
 
 logger = logging.getLogger(__name__)
@@ -39,16 +39,18 @@ HELP = HelpCategory("DEBUGTOOL")
 @alemiBot.on_message(is_superuser & filterCommand("put", list(alemiBot.prefixes)))
 @report_error(logger)
 @set_offline
+@cancel_chat_action
 async def put_cmd(client, message):
 	"""save file to server
 
 	Reply to a media message or attach media to store file on server
 	"""
 	msg = message
+	prog = ProgressChatAction(client, message.chat.id, "choose_contact")
 	if message.reply_to_message is not None:
 		msg = message.reply_to_message
 	if msg.media:
-		fpath = await client.download_media(msg)
+		fpath = await client.download_media(msg, progress=prog.tick)
 		await edit_or_reply(message, '` → ` saved file as {}'.format(fpath))
 	else:
 		await edit_or_reply(message, "`[!] → ` No file")
@@ -57,6 +59,7 @@ async def put_cmd(client, message):
 @alemiBot.on_message(is_superuser & filterCommand("get", list(alemiBot.prefixes), flags=["-log"]))
 @report_error(logger)
 @set_offline
+@cancel_chat_action
 async def get_cmd(client, message):
 	"""request a file from server
 
@@ -66,19 +69,20 @@ async def get_cmd(client, message):
 	"""
 	if len(message.command) < 1 and not message.command["-log"]:
 		return await edit_or_reply(message, "`[!] → ` No input")
-	await client.send_chat_action(message.chat.id, "upload_document")
+	prog = ProgressChatAction(client, message.chat.id)
 	if message.command["-log"]: # this is handy for logger module!
 		name = "data/debug.log" 
 	else:
 		name = message.command[0]
-	await client.send_document(message.chat.id, name, reply_to_message_id=message.message_id, caption=f'` → {name}`')
-	await client.send_chat_action(message.chat.id, "cancel")
+	await client.send_document(message.chat.id, name, reply_to_message_id=message.message_id,
+			caption=f'` → {name}`', progress=prog.tick)
 
 @HELP.add(cmd="<cmd>")
 @alemiBot.on_message(is_superuser & filterCommand(["run", "r"], list(alemiBot.prefixes), options={
 	"timeout" : ["-t", "-time"]
 }))
 @set_offline
+@cancel_chat_action
 async def run_cmd(client, message):
 	"""run a command on server
 
@@ -99,9 +103,10 @@ async def run_cmd(client, message):
 		result = cleartermcolor(stdout.decode()).rstrip()
 		if len(args) + len(result) > 4080:
 			await msg.edit(f"`$` `{args}`\n` → Output too long, sending as file`")
+			prog = ProgressChatAction(client, message.chat.id)
 			out = io.BytesIO((f"$ {args}\n" + result).encode('utf-8'))
 			out.name = "output.txt"
-			await client.send_document(message.chat.id, out)
+			await client.send_document(message.chat.id, out, progress=prog.tick)
 		else:
 			output = f"$ {args}"
 			entities = [ MessageEntity(type="code", offset=0, length=len(output)) ]
@@ -118,6 +123,7 @@ async def run_cmd(client, message):
 @HELP.add(cmd="<expr>")
 @alemiBot.on_message(is_superuser & filterCommand(["eval", "e"], list(alemiBot.prefixes)))
 @set_offline
+@cancel_chat_action
 async def eval_cmd(client, message):
 	"""eval a python expression
 
@@ -135,9 +141,10 @@ async def eval_cmd(client, message):
 		result = str(result).rstrip()
 		if len(args) + len(result) > 4080:
 			await msg.edit(f"```>>> {args}\n → Output too long, sending as file```")
+			prog = ProgressChatAction(client, message.chat.id)
 			out = io.BytesIO((f">>> {args}\n" + result).encode('utf-8'))
 			out.name = "output.txt"
-			await client.send_document(message.chat.id, out, parse_mode="markdown")
+			await client.send_document(message.chat.id, out, parse_mode="markdown", progress=prog.tick)
 		else:
 			output = f">>> {args}"
 			entities = [ MessageEntity(type="code", offset=0, length=len(output)) ]
@@ -147,7 +154,7 @@ async def eval_cmd(client, message):
 			await msg.edit(output, entities=entities)
 	except Exception as e:
 		logger.exception("Error in .eval command")
-		await msg.edit(f"`>>>` `{args}`\n`[!] → ` " + str(e), parse_mode='markdown')
+		await msg.edit(f"`>>> {args}`\n`[!] → ` " + str(e), parse_mode='markdown')
 
 async def aexec(code, client, message): # client and message are passed so they are in scope
 	exec(
@@ -160,6 +167,7 @@ async def aexec(code, client, message): # client and message are passed so they 
 @HELP.add(cmd="<code>")
 @alemiBot.on_message(is_superuser & filterCommand(["exec", "ex"], list(alemiBot.prefixes)))
 @set_offline
+@cancel_chat_action
 async def exec_cmd(client, message):
 	"""execute python code
 
@@ -178,9 +186,10 @@ async def exec_cmd(client, message):
 		result = fake_stdout.getvalue().rstrip()
 		if len(args) + len(result) > 4080:
 			await msg.edit(f"`>>>` `{fancy_args}`\n` → Output too long, sending as file`")
+			prog = ProgressChatAction(client, message.chat.id)
 			out = io.BytesIO((f">>> {fancy_args}\n" + result).encode('utf-8'))
 			out.name = "output.txt"
-			await client.send_document(message.chat.id, out, parse_mode='markdown')
+			await client.send_document(message.chat.id, out, parse_mode='markdown', progress=prog.tick)
 		else:
 			output = f">>> {fancy_args}"
 			entities = [ MessageEntity(type="pre", offset=0, length=len(output), language="python") ]
@@ -196,6 +205,7 @@ async def exec_cmd(client, message):
 @alemiBot.on_message(is_allowed & filterCommand("where", list(alemiBot.prefixes), flags=["-no"]))
 @report_error(logger)
 @set_offline
+@cancel_chat_action
 async def where_cmd(client, message):
 	"""get info about a chat
 
@@ -204,6 +214,7 @@ async def where_cmd(client, message):
 	Add `-no` at the end if you just want the id : no file will be attached.
 	"""
 	tgt = message.chat
+	prog = ProgressChatAction(client, message.chat.id)
 	if len(message.command) > 0:
 		arg = message.command[0]
 		if arg.isnumeric():
@@ -214,12 +225,13 @@ async def where_cmd(client, message):
 	if not message.command["-no"]:
 		out = io.BytesIO((str(tgt)).encode('utf-8'))
 		out.name = f"chat-{tgt.id}.json"
-		await client.send_document(message.chat.id, out)
+		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add(cmd="[<target>]", sudo=False)
 @alemiBot.on_message(is_allowed & filterCommand("who", list(alemiBot.prefixes), flags=["-no"]))
 @report_error(logger)
 @set_offline
+@cancel_chat_action
 async def who_cmd(client, message):
 	"""get info about a user
 
@@ -229,6 +241,7 @@ async def who_cmd(client, message):
 	Use `-no` flag if you just want the id.
 	"""
 	peer = get_user(message)
+	prog = ProgressChatAction(client, message.chat.id)
 	if len(message.command) > 0:
 		arg = message.command[0]
 		peer = await client.get_users(int(arg) if arg.isnumeric() else arg)
@@ -238,7 +251,7 @@ async def who_cmd(client, message):
 	if not message.command["-no"]:
 		out = io.BytesIO((str(peer)).encode('utf-8'))
 		out.name = f"user-{peer.id}.json"
-		await client.send_document(message.chat.id, out)
+		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add(cmd="[<target>]", sudo=False)
 @alemiBot.on_message(is_allowed & filterCommand("what", list(alemiBot.prefixes), options={
@@ -246,6 +259,7 @@ async def who_cmd(client, message):
 }, flags=["-no"]))
 @report_error(logger)
 @set_offline
+@cancel_chat_action
 async def what_cmd(client, message):
 	"""get info about a message
 
@@ -255,6 +269,7 @@ async def what_cmd(client, message):
 	Append `-no` if you just want the id.
 	"""
 	msg = message
+	prog = ProgressChatAction(client, message.chat.id)
 	if message.reply_to_message is not None:
 		msg = await client.get_messages(message.chat.id, message.reply_to_message.message_id)
 	elif len(message.command) > 0 and message.command[0].isnumeric():
@@ -269,12 +284,13 @@ async def what_cmd(client, message):
 	if not message.command["-no"]:
 		out = io.BytesIO((str(msg)).encode('utf-8'))
 		out.name = f"msg-{msg.message_id}.json"
-		await client.send_document(message.chat.id, out)
+		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add()
 @alemiBot.on_message(is_superuser & filterCommand(["joined", "jd"], list(alemiBot.prefixes)))
 @report_error(logger)
 @set_offline
+@cancel_chat_action
 async def joined_cmd(client, message):
 	"""count active chats
 
@@ -284,7 +300,9 @@ async def joined_cmd(client, message):
 	msg = await edit_or_reply(message, "` → ` Counting...")
 	res = {}
 	total = 0
+	prog = ProgressChatAction(client, message.chat.id)
 	async for dialog in client.iter_dialogs():
+		prog.tick()
 		if dialog.chat.type not in res:
 			res[dialog.chat.type] = 0
 		res[dialog.chat.type] += 1
