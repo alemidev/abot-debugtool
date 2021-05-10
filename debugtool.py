@@ -72,9 +72,10 @@ async def get_cmd(client, message):
 	if len(message.command.arg) < 1 and "-log" not in message.command.flags:
 		return await edit_or_reply(message, "`[!] → ` No input")
 	await client.send_chat_action(message.chat.id, "upload_document")
-	name = message.command.arg[0]
 	if "-log" in message.command.flags: # this is handy for logger module!
-		name = "data/debug.log" + name
+		name = "data/debug.log" 
+	else:
+		name = message.command.arg[0]
 	await client.send_document(message.chat.id, name, reply_to_message_id=message.message_id, caption=f'` → {name}`')
 	await client.send_chat_action(message.chat.id, "cancel")
 
