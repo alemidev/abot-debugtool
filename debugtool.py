@@ -1,22 +1,17 @@
 import asyncio
 import io
-import re
 import logging
 import sys
 import inspect
-import time
-import json
 
 from bot import alemiBot
 
-from pyrogram import filters
 from pyrogram.types import MessageEntity
 
 from util.command import filterCommand
-from util.text import cleartermcolor, tokenize_json, tokenize_lines
+from util.text import cleartermcolor
 from util.getters import get_user
 from util.message import is_me, edit_or_reply
-from util.serialization import convert_to_dict
 from util.permission import is_superuser, is_allowed
 from util.decorators import report_error, set_offline
 from util.help import HelpCategory, CATEGORIES
@@ -69,13 +64,13 @@ async def get_cmd(client, message):
 	The path can be absolute or relative (starting from alemiBot workdir).
 	Use flag `-log` to automatically upload `data/debug.log`.
 	"""
-	if len(message.command.arg) < 1 and "-log" not in message.command.flags:
+	if len(message.command) < 1 and not message.command["-log"]:
 		return await edit_or_reply(message, "`[!] → ` No input")
 	await client.send_chat_action(message.chat.id, "upload_document")
-	if "-log" in message.command.flags: # this is handy for logger module!
+	if message.command["-log"]: # this is handy for logger module!
 		name = "data/debug.log" 
 	else:
-		name = message.command.arg[0]
+		name = message.command[0]
 	await client.send_document(message.chat.id, name, reply_to_message_id=message.message_id, caption=f'` → {name}`')
 	await client.send_chat_action(message.chat.id, "cancel")
 
@@ -91,11 +86,11 @@ async def run_cmd(client, message):
 	There is a timeout of 60 seconds to any command issued, this can be changed with the `-t` option.
 	You should properly wrap your arguments with `\"`, they will be ignored by cmd parser.
 	"""
-	timeout = float(message.command.option("timeout", 60))
+	timeout = float(message.command["timeout"] or 60)
 	args = message.command.text
 	msg = await edit_or_reply(message, "` → ` Running")
 	try:
-		logger.info(f"Executing shell command \"{args}\"")
+		logger.info("Executing shell command \"%s\"", args)
 		proc = await asyncio.create_subprocess_shell(
 			args,
 			stdout=asyncio.subprocess.PIPE,
@@ -133,7 +128,7 @@ async def eval_cmd(client, message):
 	args = message.command.text
 	msg = await edit_or_reply(message, "` → ` Evaluating")
 	try:
-		logger.info(f"Evaluating \"{args}\"")
+		logger.info("Evaluating \"%s\"", args)
 		result = eval(args)
 		if inspect.iscoroutine(result):
 			result = await result
@@ -158,7 +153,6 @@ async def aexec(code, client, message): # client and message are passed so they 
 	exec(
 		f'async def __aex(): ' +
 		''.join(f'\n {l}' for l in code.split('\n')),
-		
 		locals()
 	)
 	return await locals()['__aex']()
@@ -178,7 +172,7 @@ async def exec_cmd(client, message):
 	msg = message if is_me(message) else await message.reply("`[PLACEHOLDER]`")
 	await msg.edit("```" + fancy_args + "```\n` → ` Executing")
 	try:
-		logger.info(f"Executing python expr \"{args}\"")
+		logger.info("Executing python expr \"%s\"", args)
 		with stdoutWrapper() as fake_stdout:
 			await aexec(args, client, message)
 		result = fake_stdout.getvalue().rstrip()
@@ -210,14 +204,14 @@ async def where_cmd(client, message):
 	Add `-no` at the end if you just want the id : no file will be attached.
 	"""
 	tgt = message.chat
-	if len(message.command.arg) > 0:
-		arg = message.command.arg[0]
+	if len(message.command) > 0:
+		arg = message.command[0]
 		if arg.isnumeric():
 			tgt = await client.get_chat(int(arg))
 		else:
 			tgt = await client.get_chat(arg)
 	await edit_or_reply(message, f"` → ` Getting data of chat `{tgt.id}`")
-	if "-no" not in message.command.flags:
+	if not message.command["-no"]:
 		out = io.BytesIO((str(tgt)).encode('utf-8'))
 		out.name = f"chat-{tgt.id}.json"
 		await client.send_document(message.chat.id, out)
@@ -235,13 +229,13 @@ async def who_cmd(client, message):
 	Use `-no` flag if you just want the id.
 	"""
 	peer = get_user(message)
-	if len(message.command.arg):
-		arg = message.command.arg[0]
+	if len(message.command) > 0:
+		arg = message.command[0]
 		peer = await client.get_users(int(arg) if arg.isnumeric() else arg)
 	elif message.reply_to_message is not None:
 		peer = get_user(message.reply_to_message)
 	await edit_or_reply(message, f"` → ` Getting data of user `{peer.id}`")
-	if "-no" not in message.command.flags:
+	if not message.command["-no"]:
 		out = io.BytesIO((str(peer)).encode('utf-8'))
 		out.name = f"user-{peer.id}.json"
 		await client.send_document(message.chat.id, out)
@@ -263,16 +257,16 @@ async def what_cmd(client, message):
 	msg = message
 	if message.reply_to_message is not None:
 		msg = await client.get_messages(message.chat.id, message.reply_to_message.message_id)
-	elif len(message.command.arg) > 0 and message.command.arg[0].isnumeric():
+	elif len(message.command) > 0 and message.command[0].isnumeric():
 		chat_id = message.chat.id
-		if message.command.has_option("group"):
-			if message.command.option("group").isnumeric():
-				chat_id = int(message.command.option("group"))
+		if "group" in message.command:
+			if message.command["group"].isnumeric():
+				chat_id = int(message.command["group"])
 			else:
-				chat_id = (await client.get_chat(message.command.option("group"))).id
-		msg = await client.get_messages(chat_id, int(message.command.arg[0]))
+				chat_id = (await client.get_chat(message.command["group"])).id
+		msg = await client.get_messages(chat_id, int(message.command[0]))
 	await edit_or_reply(message, f"` → ` Getting data of msg `{msg.message_id}`")
-	if "-no" not in message.command.flags:
+	if not message.command["-no"]:
 		out = io.BytesIO((str(msg)).encode('utf-8'))
 		out.name = f"msg-{msg.message_id}.json"
 		await client.send_document(message.chat.id, out)
