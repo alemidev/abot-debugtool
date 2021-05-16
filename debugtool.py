@@ -312,7 +312,7 @@ async def joined_cmd(client, message):
 		out += f"` → ` **{k}** {res[k]}\n"
 	await msg.edit(out)
 
-@alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes)))
+@alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes), flags=["-all"]))
 @report_error(logger)
 @set_offline
 async def botfather_list_command(client, message):
@@ -320,7 +320,7 @@ async def botfather_list_command(client, message):
 	out = ""
 	for k in CATEGORIES:
 		for kk in CATEGORIES[k].HELP_ENTRIES:
-			if not CATEGORIES[k].HELP_ENTRIES[kk].public:
+			if not message.command["-all"] and not CATEGORIES[k].HELP_ENTRIES[kk].public:
 				continue
 			e = CATEGORIES[k].HELP_ENTRIES[kk]
 			out += f"{e.title} - {e.args} | {e.shorttext}\n"
