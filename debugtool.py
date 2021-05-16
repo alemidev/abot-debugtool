@@ -320,6 +320,8 @@ async def botfather_list_command(client, message):
 	out = ""
 	for k in CATEGORIES:
 		for kk in CATEGORIES[k].HELP_ENTRIES:
+			if not CATEGORIES[k].HELP_ENTRIES[kk].public:
+				continue
 			e = CATEGORIES[k].HELP_ENTRIES[kk]
 			out += f"{e.title} - {e.args} | {e.shorttext}\n"
 	await message.reply(out, parse_mode='markdown')
