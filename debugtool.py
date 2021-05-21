@@ -300,9 +300,9 @@ async def joined_cmd(client, message):
 	msg = await edit_or_reply(message, "` → ` Counting...")
 	res = {}
 	total = 0
-	prog = ProgressChatAction(client, message.chat.id)
+	prog = ProgressChatAction(client, message.chat.id, "choose_contact")
 	async for dialog in client.iter_dialogs():
-		prog.tick()
+		await prog.tick()
 		if dialog.chat.type not in res:
 			res[dialog.chat.type] = 0
 		res[dialog.chat.type] += 1
