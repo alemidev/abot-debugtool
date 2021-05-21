@@ -307,7 +307,7 @@ async def joined_cmd(client, message):
 			res[dialog.chat.type] = 0
 		res[dialog.chat.type] += 1
 		total += 1
-	out = "`→ ` **{total}** --Active chats-- \n"
+	out = f"`→ ` **{total}** --Active chats-- \n"
 	for k in res:
 		out += f"` → ` **{k}** {res[k]}\n"
 	await msg.edit(out)
