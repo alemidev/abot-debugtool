@@ -35,7 +35,7 @@ class stdoutWrapper():
 
 HELP = HelpCategory("DEBUGTOOL")
 
-@HELP.add()
+@HELP.add(cmd="[<path>]")
 @alemiBot.on_message(is_superuser & filterCommand("put", list(alemiBot.prefixes)))
 @report_error(logger)
 @set_offline
@@ -43,17 +43,19 @@ HELP = HelpCategory("DEBUGTOOL")
 async def put_cmd(client, message):
 	"""save file to server
 
-	Reply to a media message or attach media to store file on server
+	Reply to a media message or attach media to store file on server.
+	File will be saved in `downloads` folder if no path is specified.
 	"""
 	msg = message
-	prog = ProgressChatAction(client, message.chat.id, "choose_contact")
+	prog = ProgressChatAction(client, message.chat.id, "find_location")
+	dest_path = message.command[0] or "downloads/"
 	if message.reply_to_message is not None:
 		msg = message.reply_to_message
 	if msg.media:
-		fpath = await client.download_media(msg, progress=prog.tick)
-		await edit_or_reply(message, '` → ` saved file as {}'.format(fpath))
+		fpath = await client.download_media(msg, file_name=dest_path, progress=prog.tick)
+		await edit_or_reply(message, f'` → ` saved file as `{fpath}`')
 	else:
-		await edit_or_reply(message, "`[!] → ` No file")
+		await edit_or_reply(message, "`[!] → ` No file given")
 
 @HELP.add(cmd="<path>")
 @alemiBot.on_message(is_superuser & filterCommand("get", list(alemiBot.prefixes), flags=["-log"]))
