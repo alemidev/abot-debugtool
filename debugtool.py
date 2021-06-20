@@ -72,9 +72,9 @@ async def get_cmd(client, message):
 	if len(message.command) < 1 and not message.command["-log"]:
 		return await edit_or_reply(message, "`[!] → ` No input")
 	prog = ProgressChatAction(client, message.chat.id)
-	if message.command["-log"]: # ugly special case for
+	if message.command["-log"]: # ugly special case for debug.log
 		with open("data/debug.log") as f:
-			logfile = io.StringIO(f.read())
+			logfile = io.BytesIO(f.read().encode('utf-8'))
 		logfile.name = "debug.log"
 		await client.send_document(message.chat.id, logfile, reply_to_message_id=message.message_id,
 				caption='` → ` **logfile**', progress=prog.tick)
