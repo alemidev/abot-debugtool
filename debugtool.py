@@ -72,12 +72,15 @@ async def get_cmd(client, message):
 	if len(message.command) < 1 and not message.command["-log"]:
 		return await edit_or_reply(message, "`[!] → ` No input")
 	prog = ProgressChatAction(client, message.chat.id)
-	if message.command["-log"]: # this is handy for logger module!
-		name = "data/debug.log" 
+	if message.command["-log"]: # ugly special case for
+		with open("data/debug.log") as f:
+			logfile = io.StringIO(f.read())
+		logfile.name = "debug.log"
+		await client.send_document(message.chat.id, logfile, reply_to_message_id=message.message_id,
+				caption='` → ` **logfile**', progress=prog.tick)
 	else:
-		name = message.command[0]
-	await client.send_document(message.chat.id, name, reply_to_message_id=message.message_id,
-			caption=f'` → {name}`', progress=prog.tick)
+		await client.send_document(message.chat.id, message.command[0], reply_to_message_id=message.message_id,
+				caption=f'` → ` **{message.command[0]}**', progress=prog.tick)
 
 @HELP.add(cmd="<cmd>")
 @alemiBot.on_message(is_superuser & filterCommand(["run", "r"], list(alemiBot.prefixes), options={
