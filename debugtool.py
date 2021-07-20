@@ -74,9 +74,12 @@ async def get_cmd(client, message):
 	prog = ProgressChatAction(client, message.chat.id)
 	if message.command["-log"]: # ugly special case for debug.log
 		with open("data/debug.log") as f:
-			logfile = io.BytesIO(f.read().encode('utf-8'))
-		logfile.name = "debug.log"
-		await client.send_document(message.chat.id, logfile, reply_to_message_id=message.message_id,
+			logfile = f.read().encode('utf-8')
+		if len(client.session_name) > 25: # It's most likely a session string
+			logfile = logfile.replace(client.session_name, "client") # botchy fix for those using a session string
+		log_io = io.BytesIO(logfile)
+		log_io.name = "debug.log"
+		await client.send_document(message.chat.id, log_io, reply_to_message_id=message.message_id,
 				caption='` → ` **logfile**', progress=prog.tick)
 	else:
 		await client.send_document(message.chat.id, message.command[0], reply_to_message_id=message.message_id,
