@@ -6,7 +6,8 @@ import inspect
 
 from bot import alemiBot
 
-from pyrogram.types import MessageEntity
+from pyrogram.types import MessageEntity, ReplyKeyboardMarkup
+from pyrogram import filters
 
 from util.command import filterCommand
 from util.text import cleartermcolor
@@ -69,6 +70,9 @@ async def get_cmd(client, message):
 	The path can be absolute or relative (starting from alemiBot workdir).
 	Use flag `-log` to automatically upload `data/debug.log`.
 	"""
+	reply_to = message.reply_to_message
+	if reply_to and reply_to.reply_markup and isinstance(reply_to.reply_markup, ReplyKeyboardMarkup):
+		return await edit_or_reply(message, "`[!] → ` Not allowed from ReplyKeyboard")
 	if len(message.command) < 1 and not message.command["-log"]:
 		return await edit_or_reply(message, "`[!] → ` No input")
 	prog = ProgressChatAction(client, message.chat.id)
@@ -98,6 +102,9 @@ async def run_cmd(client, message):
 	There is a timeout of 60 seconds to any command issued, this can be changed with the `-t` option.
 	You should properly wrap your arguments with `\"`, they will be ignored by cmd parser.
 	"""
+	reply_to = message.reply_to_message
+	if reply_to and reply_to.reply_markup and isinstance(reply_to.reply_markup, ReplyKeyboardMarkup):
+		return await edit_or_reply(message, "`[!] → ` Not allowed from ReplyKeyboard")
 	timeout = float(message.command["timeout"] or 60)
 	args = message.command.text
 	msg = await edit_or_reply(message, "` → ` Running")
@@ -139,6 +146,9 @@ async def eval_cmd(client, message):
 	Returned value will be printed upon successful evaluation. `stdout` won't be captured (use `.ex`).
 	If a coroutine is returned, it will be awaited. This won't tokenize large outputs per-line,	use .ex if you need that.
 	"""
+	reply_to = message.reply_to_message
+	if reply_to and reply_to.reply_markup and isinstance(reply_to.reply_markup, ReplyKeyboardMarkup):
+		return await edit_or_reply(message, "`[!] → ` Not allowed from ReplyKeyboard")
 	args = message.command.text
 	msg = await edit_or_reply(message, "` → ` Evaluating")
 	try:
@@ -183,6 +193,9 @@ async def exec_cmd(client, message):
 	This, unlike `eval`, has no bounds and **can have side effects**. Use with more caution than `eval`!
 	The `exec` call is wrapped to make it work with async code.
 	"""
+	reply_to = message.reply_to_message
+	if reply_to and reply_to.reply_markup and isinstance(reply_to.reply_markup, ReplyKeyboardMarkup):
+		return await edit_or_reply(message, "`[!] → ` Not allowed from ReplyKeyboard")
 	args = message.command.text
 	fancy_args = args.replace("\n", "\n... ")
 	msg = message if is_me(message) else await message.reply("`[PLACEHOLDER]`")
