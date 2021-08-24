@@ -321,17 +321,52 @@ async def joined_cmd(client, message):
 	msg = await edit_or_reply(message, "` → ` Counting...")
 	res = {}
 	total = 0
-	prog = ProgressChatAction(client, message.chat.id, "choose_contact")
-	async for dialog in client.iter_dialogs():
-		await prog.tick()
-		if dialog.chat.type not in res:
-			res[dialog.chat.type] = 0
-		res[dialog.chat.type] += 1
-		total += 1
+	with ProgressChatAction(client, message.chat.id, "choose_contact") as prog:
+		async for dialog in client.iter_dialogs():
+			if dialog.chat.type not in res:
+				res[dialog.chat.type] = 0
+			res[dialog.chat.type] += 1
+			total += 1
 	out = f"`→ ` **{total}** --Active chats-- \n"
 	for k in res:
 		out += f"` → ` **{k}** {res[k]}\n"
 	await msg.edit(out)
+
+@HELP.add()
+@alemiBot.on_message(is_superuser & filterCommand(['tasks', 'task'], list(alemiBot.prefixes)))
+@report_error(logger)
+@set_offline
+async def running_tasks_cmd(client, message):
+	"""show running callbacks
+	
+	Will print running handler callbacks, with their hash.
+	To be able to use these functions, you need my (experimental!) pyrogram fork : 
+	  pip install https://github.com/alemidev/pyrogram/archive/task_management.zip"""
+	if not hasattr(client, "running"): # ugly check eww
+		return await edit_or_reply(message, "<code>[!] → </code> This pyrogram version lacks task management.", parse_mode="html")
+	line = "<b>[</b><code>{hash}</code><b>]</b> {name}\n"
+	out = ""
+	for h in client.running:
+		out += line.format(hash=h, name=client.running[h].__name__)
+	await edit_or_reply(message, out, parse_mode="html")
+
+@HELP.add(cmd="<hash>")
+@alemiBot.on_message(is_superuser & filterCommand(['stop', 'cancel'], list(alemiBot.prefixes)))
+@report_error(logger)
+@set_offline
+async def cancel_task_cmd(client, message):
+	"""cancel running callbacks
+	
+	Will immediately stop a running callback.
+	To be able to use these functions, you need my (experimental!) pyrogram fork : 
+	  pip install https://github.com/alemidev/pyrogram/archive/task_management.zip"""
+	if not hasattr(client, "running"): # ugly check eww
+		return await edit_or_reply(message, "<code>[!] → </code> This pyrogram version lacks task management.", parse_mode="html")
+	if len(message.command) < 1:
+		return await edit_or_reply(message, "<code>[!] → </code> No task hash provided", parse_mode="html")
+	cb_id = int(message.command[0])
+	client.running.pop(cb_id).close()
+	await edit_or_reply(message, f"<code> → </code> Canceled task <code>{cb_id}</code>", parse_mode="html")
 
 @alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes), flags=["-all"]))
 @report_error(logger)
