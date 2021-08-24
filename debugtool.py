@@ -199,7 +199,7 @@ async def exec_cmd(client, message):
 	args = message.command.text
 	fancy_args = args.replace("\n", "\n... ")
 	msg = message if is_me(message) else await message.reply("`[PLACEHOLDER]`")
-	await msg.edit("```" + fancy_args + "```\n` → ` Executing")
+	await msg.edit("```>>> " + fancy_args + "```\n` → ` Executing")
 	try:
 		logger.info("Executing python expr:\n\t%s", args.replace('\n', '\n\t'))
 		with stdoutWrapper() as fake_stdout:
