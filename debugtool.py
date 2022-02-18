@@ -4,18 +4,17 @@ import logging
 import sys
 import inspect
 
-from bot import alemiBot
+from alemibot import alemiBot
 
-from pyrogram.types import MessageEntity, ReplyKeyboardMarkup
 from pyrogram import filters
+from pyrogram.types import MessageEntity, ReplyKeyboardMarkup
 
-from util.command import filterCommand
-from util.text import cleartermcolor
-from util.getters import get_user
-from util.message import ProgressChatAction, is_me, edit_or_reply
-from util.permission import is_superuser, is_allowed
-from util.decorators import report_error, set_offline, cancel_chat_action
-from util.help import HelpCategory, CATEGORIES
+from alemibot.util.help import CATEGORIES
+from alemibot.util.command import _Message as Message
+from alemibot.util import (
+	filterCommand, cleartermcolor, get_user, ProgressChatAction, is_me, edit_or_reply,
+	sudo, is_allowed, report_error, set_offline, cancel_chat_action, HelpCategory
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +36,11 @@ class stdoutWrapper():
 HELP = HelpCategory("DEBUGTOOL")
 
 @HELP.add(cmd="[<path>]")
-@alemiBot.on_message(is_superuser & filterCommand("put", list(alemiBot.prefixes)))
+@alemiBot.on_message(sudo & filterCommand("put"))
 @report_error(logger)
 @set_offline
 @cancel_chat_action
-async def put_cmd(client, message):
+async def put_cmd(client:alemiBot, message:Message):
 	"""save file to server
 
 	Reply to a media message or attach media to store file on server.
@@ -59,11 +58,11 @@ async def put_cmd(client, message):
 		await edit_or_reply(message, "`[!] → ` No file given")
 
 @HELP.add(cmd="<path>")
-@alemiBot.on_message(is_superuser & filterCommand("get", list(alemiBot.prefixes), flags=["-log"]))
+@alemiBot.on_message(sudo & filterCommand("get", flags=["-log"]))
 @report_error(logger)
 @set_offline
 @cancel_chat_action
-async def get_cmd(client, message):
+async def get_cmd(client:alemiBot, message:Message):
 	"""request a file from server
 
 	Will upload a file from server to this chat.
@@ -90,12 +89,12 @@ async def get_cmd(client, message):
 				caption=f'` → ` **{message.command[0]}**', progress=prog.tick)
 
 @HELP.add(cmd="<cmd>")
-@alemiBot.on_message(is_superuser & filterCommand(["run", "r"], list(alemiBot.prefixes), options={
+@alemiBot.on_message(sudo & filterCommand(["run", "r"], options={
 	"timeout" : ["-t", "-time"]
 }))
 @set_offline
 @cancel_chat_action
-async def run_cmd(client, message):
+async def run_cmd(client:alemiBot, message:Message):
 	"""run a command on server
 
 	Shell will be from user running bot: every command starts in bot root folder.
@@ -136,10 +135,10 @@ async def run_cmd(client, message):
 		await msg.edit(f"`$ {args}`\n`[!] → ` " + str(e))
 
 @HELP.add(cmd="<expr>")
-@alemiBot.on_message(is_superuser & filterCommand(["eval", "e"], list(alemiBot.prefixes)))
+@alemiBot.on_message(sudo & filterCommand(["eval", "e"]))
 @set_offline
 @cancel_chat_action
-async def eval_cmd(client, message):
+async def eval_cmd(client:alemiBot, message:Message):
 	"""eval a python expression
 
 	No imports can be made nor variables can be assigned :`eval` cannot have side effects.
@@ -183,10 +182,10 @@ async def aexec(code, client, message): # client and message are passed so they 
 	return await locals()['__aex']()
 
 @HELP.add(cmd="<code>")
-@alemiBot.on_message(is_superuser & filterCommand(["exec", "ex"], list(alemiBot.prefixes)))
+@alemiBot.on_message(sudo & filterCommand(["exec", "ex"]))
 @set_offline
 @cancel_chat_action
-async def exec_cmd(client, message):
+async def exec_cmd(client:alemiBot, message:Message):
 	"""execute python code
 
 	Will capture and print stdout.
@@ -223,11 +222,11 @@ async def exec_cmd(client, message):
 		await msg.edit(f"`>>> {args}`\n`[!] → ` " + str(e), parse_mode='markdown')
 
 @HELP.add(cmd="[<target>]", sudo=False)
-@alemiBot.on_message(is_allowed & filterCommand("where", list(alemiBot.prefixes), flags=["-no"]))
+@alemiBot.on_message(is_allowed & filterCommand("where", flags=["-no"]))
 @report_error(logger)
 @set_offline
 @cancel_chat_action
-async def where_cmd(client, message):
+async def where_cmd(client:alemiBot, message:Message):
 	"""get info about a chat
 
 	Get complete information about a chat and send it as json.
@@ -249,11 +248,11 @@ async def where_cmd(client, message):
 		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add(cmd="[<target>]", sudo=False)
-@alemiBot.on_message(is_allowed & filterCommand("who", list(alemiBot.prefixes), flags=["-no"]))
+@alemiBot.on_message(is_allowed & filterCommand("who", flags=["-no"]))
 @report_error(logger)
 @set_offline
 @cancel_chat_action
-async def who_cmd(client, message):
+async def who_cmd(client:alemiBot, message:Message):
 	"""get info about a user
 
 	Get complete information about user and attach as json.
@@ -275,13 +274,13 @@ async def who_cmd(client, message):
 		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add(cmd="[<target>]", sudo=False)
-@alemiBot.on_message(is_allowed & filterCommand("what", list(alemiBot.prefixes), options={
+@alemiBot.on_message(is_allowed & filterCommand("what", options={
 	"group" : ["-g", "-group"]
 }, flags=["-no"]))
 @report_error(logger)
 @set_offline
 @cancel_chat_action
-async def what_cmd(client, message):
+async def what_cmd(client:alemiBot, message:Message):
 	"""get info about a message
 
 	Get complete information about a message and attach as json.
@@ -308,11 +307,11 @@ async def what_cmd(client, message):
 		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add()
-@alemiBot.on_message(is_superuser & filterCommand(["joined", "jd"], list(alemiBot.prefixes)))
+@alemiBot.on_message(sudo & filterCommand(["joined", "jd"]))
 @report_error(logger)
 @set_offline
 @cancel_chat_action
-async def joined_cmd(client, message):
+async def joined_cmd(client:alemiBot, message:Message):
 	"""count active chats
 
 	Get number of dialogs: groups, supergroups, channels, dms, bots.
@@ -333,10 +332,10 @@ async def joined_cmd(client, message):
 	await msg.edit(out)
 
 @HELP.add()
-@alemiBot.on_message(is_superuser & filterCommand(['tasks', 'task'], list(alemiBot.prefixes)))
+@alemiBot.on_message(sudo & filterCommand(['tasks', 'task']))
 @report_error(logger)
 @set_offline
-async def running_tasks_cmd(client, message):
+async def running_tasks_cmd(client:alemiBot, message:Message):
 	"""show running callbacks
 	
 	Will print running handler callbacks, with their hash.
@@ -351,10 +350,10 @@ async def running_tasks_cmd(client, message):
 	await edit_or_reply(message, out, parse_mode="html")
 
 @HELP.add(cmd="<hash>")
-@alemiBot.on_message(is_superuser & filterCommand(['stop', 'cancel'], list(alemiBot.prefixes)))
+@alemiBot.on_message(sudo & filterCommand(['stop', 'cancel']))
 @report_error(logger)
 @set_offline
-async def cancel_task_cmd(client, message):
+async def cancel_task_cmd(client:alemiBot, message:Message):
 	"""cancel running callbacks
 	
 	Will immediately stop a running callback.
@@ -368,10 +367,10 @@ async def cancel_task_cmd(client, message):
 	client.running.pop(cb_id).close()
 	await edit_or_reply(message, f"<code> → </code> Canceled task <code>{cb_id}</code>", parse_mode="html")
 
-@alemiBot.on_message(is_superuser & filterCommand(["make_botfather_list"], list(alemiBot.prefixes), flags=["-all"]))
+@alemiBot.on_message(sudo & filterCommand(["make_botfather_list"], flags=["-all"]))
 @report_error(logger)
 @set_offline
-async def botfather_list_command(client, message):
+async def botfather_list_command(client:alemiBot, message:Message):
 	"""make botfather-compatible command list"""
 	out = ""
 	for k in CATEGORIES:
