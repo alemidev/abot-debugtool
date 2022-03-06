@@ -171,7 +171,7 @@ async def eval_cmd(client:alemiBot, message:Message):
 			await msg.edit(output, entities=entities)
 	except Exception as e:
 		logger.exception("Error in .eval command")
-		await msg.edit(f"`>>> {args}`\n`[!] → ` " + str(e), parse_mode='markdown')
+		await msg.edit(f"`>>> {args}`\n`[!] {type(e).__name__} → ` {str(e)}", parse_mode='markdown')
 
 async def aexec(code, client, message): # client and message are passed so they are in scope
 	exec(
@@ -219,7 +219,7 @@ async def exec_cmd(client:alemiBot, message:Message):
 			await msg.edit(output, entities=entities)
 	except Exception as e:
 		logger.exception("Error in .exec command")
-		await msg.edit(f"`>>> {args}`\n`[!] → ` " + str(e), parse_mode='markdown')
+		await msg.edit(f"`>>> {args}`\n`[!] {type(e).__name__} → ` {str(e)}", parse_mode='markdown')
 
 @HELP.add(cmd="[<target>]", sudo=False)
 @alemiBot.on_message(is_allowed & filterCommand("where", flags=["-no"]))
