@@ -7,6 +7,7 @@ import inspect
 from alemibot import alemiBot
 
 from pyrogram import filters
+from pyrogram.enums import ParseMode, MessageEntityType
 from pyrogram.types import MessageEntity, ReplyKeyboardMarkup
 
 from alemibot.util.help import CATEGORIES
@@ -82,10 +83,10 @@ async def get_cmd(client:alemiBot, message:Message):
 			logfile = logfile.replace(client.session_name, "client") # botchy fix for those using a session string
 		log_io = io.BytesIO(logfile.encode("utf-8"))
 		log_io.name = "debug.log"
-		await client.send_document(message.chat.id, log_io, reply_to_message_id=message.message_id,
+		await client.send_document(message.chat.id, log_io, reply_to_message_id=message.id,
 				caption='` → ` **logfile**', progress=prog.tick)
 	else:
-		await client.send_document(message.chat.id, message.command[0], reply_to_message_id=message.message_id,
+		await client.send_document(message.chat.id, message.command[0], reply_to_message_id=message.id,
 				caption=f'` → ` **{message.command[0]}**', progress=prog.tick)
 
 @HELP.add(cmd="<cmd>")
@@ -123,9 +124,9 @@ async def run_cmd(client:alemiBot, message:Message):
 			await client.send_document(message.chat.id, out, progress=prog.tick)
 		else:
 			output = f"$ {args}"
-			entities = [ MessageEntity(type="code", offset=0, length=len(output)) ]
+			entities = [ MessageEntity(type=MessageEntityType.PRE, offset=0, length=len(output), language="bash") ]
 			if len(result) > 0:
-				entities.append(MessageEntity(type="pre", offset=len(output) + 2, length=len(result), language="bash"))
+				entities.append(MessageEntity(type=MessageEntityType.PRE, offset=len(output) + 2, length=len(result), language="bash"))
 				output += "\n\n" + result
 			await msg.edit(output, entities=entities)
 	except asyncio.exceptions.TimeoutError:
@@ -161,17 +162,17 @@ async def eval_cmd(client:alemiBot, message:Message):
 			prog = ProgressChatAction(client, message.chat.id)
 			out = io.BytesIO((f">>> {args}\n" + result).encode('utf-8'))
 			out.name = "output.txt"
-			await client.send_document(message.chat.id, out, parse_mode="markdown", progress=prog.tick)
+			await client.send_document(message.chat.id, out, parse_mode=ParseMode.MARKDOWN, progress=prog.tick)
 		else:
 			output = f">>> {args}"
-			entities = [ MessageEntity(type="code", offset=0, length=len(output)) ]
+			entities = [ MessageEntity(type=MessageEntityType.CODE, offset=0, length=len(output)) ]
 			if len(result) > 0:
-				entities.append(MessageEntity(type="code", offset=len(output), length=len(result) + 1))
+				entities.append(MessageEntity(type=MessageEntityType.CODE, offset=len(output), length=len(result) + 1))
 				output += "\n" + result
 			await msg.edit(output, entities=entities)
 	except Exception as e:
 		logger.exception("Error in .eval command")
-		await msg.edit(f"`>>> {args}`\n`[!] {type(e).__name__} → ` {str(e)}", parse_mode='markdown')
+		await msg.edit(f"`>>> {args}`\n`[!] {type(e).__name__} → ` {str(e)}", parse_mode=ParseMode.MARKDOWN)
 
 async def aexec(code, client, message): # client and message are passed so they are in scope
 	exec(
@@ -209,17 +210,17 @@ async def exec_cmd(client:alemiBot, message:Message):
 			prog = ProgressChatAction(client, message.chat.id)
 			out = io.BytesIO((f">>> {fancy_args}\n" + result).encode('utf-8'))
 			out.name = "output.txt"
-			await client.send_document(message.chat.id, out, parse_mode='markdown', progress=prog.tick)
+			await client.send_document(message.chat.id, out, parse_mode=ParseMode.MARKDOWN, progress=prog.tick)
 		else:
 			output = f">>> {fancy_args}"
-			entities = [ MessageEntity(type="pre", offset=0, length=len(output), language="python") ]
+			entities = [ MessageEntity(type=MessageEntityType.PRE, offset=0, length=len(output), language="python") ]
 			if len(result) > 0:
-				entities.append(MessageEntity(type="pre", offset=len(output) + 2, length=len(result), language="python"))
+				entities.append(MessageEntity(type=MessageEntityType.PRE, offset=len(output) + 2, length=len(result), language="python"))
 				output += "\n\n" + result
 			await msg.edit(output, entities=entities)
 	except Exception as e:
 		logger.exception("Error in .exec command")
-		await msg.edit(f"`>>> {args}`\n`[!] {type(e).__name__} → ` {str(e)}", parse_mode='markdown')
+		await msg.edit(f"`>>> {args}`\n`[!] {type(e).__name__} → ` {str(e)}", parse_mode=ParseMode.MARKDOWN)
 
 @HELP.add(cmd="[<target>]", sudo=False)
 @alemiBot.on_message(is_allowed & filterCommand("where", flags=["-no"]))
@@ -291,7 +292,7 @@ async def what_cmd(client:alemiBot, message:Message):
 	msg = message
 	prog = ProgressChatAction(client, message.chat.id)
 	if message.reply_to_message is not None:
-		msg = await client.get_messages(message.chat.id, message.reply_to_message.message_id)
+		msg = await client.get_messages(message.chat.id, message.reply_to_message.id)
 	elif len(message.command) > 0 and message.command[0].isnumeric():
 		chat_id = message.chat.id
 		if "group" in message.command:
@@ -300,10 +301,10 @@ async def what_cmd(client:alemiBot, message:Message):
 			else:
 				chat_id = (await client.get_chat(message.command["group"])).id
 		msg = await client.get_messages(chat_id, int(message.command[0]))
-	await edit_or_reply(message, f"` → ` Getting data of msg `{msg.message_id}`")
+	await edit_or_reply(message, f"` → ` Getting data of msg `{msg.id}`")
 	if not message.command["-no"]:
 		out = io.BytesIO((str(msg)).encode('utf-8'))
-		out.name = f"msg-{msg.message_id}.json"
+		out.name = f"msg-{msg.id}.json"
 		await client.send_document(message.chat.id, out, progress=prog.tick)
 
 @HELP.add()
@@ -342,12 +343,12 @@ async def running_tasks_cmd(client:alemiBot, message:Message):
 	To be able to use these functions, you need my (experimental!) pyrogram fork : 
 	  pip install https://github.com/alemidev/pyrogram/archive/task_management.zip"""
 	if not hasattr(client, "running"): # ugly check eww
-		return await edit_or_reply(message, "<code>[!] → </code> This pyrogram version lacks task management.", parse_mode="html")
+		return await edit_or_reply(message, "<code>[!] → </code> This pyrogram version lacks task management.", parse_mode=ParseMode.HTML)
 	line = "<b>[</b><code>{hash}</code><b>]</b> {name}\n"
 	out = ""
 	for h in client.running:
 		out += line.format(hash=h, name=client.running[h].__name__)
-	await edit_or_reply(message, out, parse_mode="html")
+	await edit_or_reply(message, out, parse_mode=ParseMode.HTML)
 
 @HELP.add(cmd="<hash>")
 @alemiBot.on_message(sudo & filterCommand(['stop', 'cancel']))
@@ -360,12 +361,12 @@ async def cancel_task_cmd(client:alemiBot, message:Message):
 	To be able to use these functions, you need my (experimental!) pyrogram fork : 
 	  pip install https://github.com/alemidev/pyrogram/archive/task_management.zip"""
 	if not hasattr(client, "running"): # ugly check eww
-		return await edit_or_reply(message, "<code>[!] → </code> This pyrogram version lacks task management.", parse_mode="html")
+		return await edit_or_reply(message, "<code>[!] → </code> This pyrogram version lacks task management.", parse_mode=ParseMode.HTML)
 	if len(message.command) < 1:
-		return await edit_or_reply(message, "<code>[!] → </code> No task hash provided", parse_mode="html")
+		return await edit_or_reply(message, "<code>[!] → </code> No task hash provided", parse_mode=ParseMode.HTML)
 	cb_id = int(message.command[0])
 	client.running.pop(cb_id).close()
-	await edit_or_reply(message, f"<code> → </code> Canceled task <code>{cb_id}</code>", parse_mode="html")
+	await edit_or_reply(message, f"<code> → </code> Canceled task <code>{cb_id}</code>", parse_mode=ParseMode.HTML)
 
 @alemiBot.on_message(sudo & filterCommand(["make_botfather_list"], flags=["-all"]))
 @report_error(logger)
@@ -379,4 +380,4 @@ async def botfather_list_command(client:alemiBot, message:Message):
 				continue
 			e = CATEGORIES[k].HELP_ENTRIES[kk]
 			out += f"{e.title} - {e.args} | {e.shorttext}\n"
-	await message.reply(out, parse_mode='markdown')
+	await message.reply(out, parse_mode=ParseMode.MARKDOWN)
