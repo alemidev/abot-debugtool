@@ -68,7 +68,7 @@ async def get_cmd(client:alemiBot, message:Message):
 
 	Will upload a file from server to this chat.
 	The path can be absolute or relative (starting from alemiBot workdir).
-	Use flag `-log` to automatically upload `data/debug.log`.
+	Use flag `-log` to automatically upload `data/<name>.log`.
 	"""
 	reply_to = message.reply_to_message
 	if reply_to and reply_to.reply_markup and isinstance(reply_to.reply_markup, ReplyKeyboardMarkup):
@@ -77,12 +77,12 @@ async def get_cmd(client:alemiBot, message:Message):
 		return await edit_or_reply(message, "`[!] → ` No input")
 	prog = ProgressChatAction(client, message.chat.id)
 	if message.command["-log"]: # ugly special case for debug.log
-		with open("data/debug.log") as f:
+		with open(f"data/{client.name}.log") as f:
 			logfile = f.read()
 		if len(client.session_name) > 25: # It's most likely a session string
 			logfile = logfile.replace(client.session_name, "client") # botchy fix for those using a session string
 		log_io = io.BytesIO(logfile.encode("utf-8"))
-		log_io.name = "debug.log"
+		log_io.name = f"{client.name}.log"
 		await client.send_document(message.chat.id, log_io, reply_to_message_id=message.id,
 				caption='` → ` **logfile**', progress=prog.tick)
 	else:
